@@ -21,11 +21,12 @@ function findPoint(x: number, y: number): Point | undefined {
       <template v-for="column in dimensions.X" :key="`field-column-${column}`">
         <div @click.stop="emit('add-point', column, row)" class="cell">
           <Transition name="bounce">
-            <Icon
+            <ThePlayerIcon
                 v-if="findPoint(column, row)"
-                :name="findPoint(column, row)!.player === 'cross' ? 'material-symbols:close-rounded' : 'material-symbols:circle-outline'"
+                :player="findPoint(column, row)!.player"
+                width="100%"
+                height="100%"
                 class="symbol"
-                :class="findPoint(column, row)!.player"
             />
           </Transition>
         </div>
@@ -63,7 +64,7 @@ function findPoint(x: number, y: number): Point | undefined {
   grid-template-rows: repeat(3, var(--cell-size));
   width: max-content;
   height: max-content;
-  margin: 5rem auto;
+  margin: auto;
 
   .cell {
     background-color: var(--ui-bg-elevated);
@@ -84,22 +85,9 @@ function findPoint(x: number, y: number): Point | undefined {
     }
 
     .symbol {
-      width: 100%;
-      height: 100%;
       object-fit: contain;
       display: inline-block;
-
-      &.cross {
-        background-color: var(--ui-primary);
-        transform: scale(1.1);
-      }
-
-      &.circle {
-        background-color: var(--ui-secondary);
-        transform: scale(0.9);
-      }
     }
-
   }
 
   .separator {
