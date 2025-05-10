@@ -4,6 +4,7 @@ import type { Player } from '~/shared/types/player'
 import { defineWinner } from '~/shared/utils/define-winner'
 import ThePlayerIcon from '~/components/ThePlayerIcon.vue'
 import TheWinnerModal from '~/components/TheWinnerModal.vue'
+import WebSocket from '~/components/WebSocket.client.vue'
 
 const overlay = useOverlay()
 const currentPlayer = ref<Player>('cross')
@@ -60,5 +61,6 @@ async function showTheWinner() {
           :style="{ 'pointer-events': !!winner ? 'none' : 'unset' }"
       />
     </NuxtCard>
+    <WebSocket />
   </NuxtContainer>
 </template>
