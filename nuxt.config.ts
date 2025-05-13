@@ -4,7 +4,7 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: ['@nuxt/ui', '@nuxt/icon', '@vueuse/nuxt'],
   css: ['~/assets/css/main.css'],
-  ui: { prefix: 'Nuxt' },
+  ui: { prefix: 'Nuxt', fonts: false },
   nitro: {
     experimental: {
       websocket: true

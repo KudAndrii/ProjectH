@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Point } from '~/shared/types/point'
+import type { Point } from '#shared/types/point'
 
 const props = defineProps<{
   dimensions: { X: number, Y: number }

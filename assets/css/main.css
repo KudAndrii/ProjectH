@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 
-.card-header {
+.nuxt-card-header {
     display: flex;
     justify-content: center;
     align-items: center;

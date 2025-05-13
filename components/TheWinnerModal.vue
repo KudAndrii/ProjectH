@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Player } from '~/shared/types/player'
+import type { Player } from '#shared/types/player'
 
 defineProps<{
   winner: Player | undefined
@@ -7,8 +7,12 @@ defineProps<{
 </script>
 
 <template>
-  <NuxtModal>
-    <template #content>
+  <NuxtModal
+      title="Game over"
+      description="After closing this model the new game will be started."
+      close-icon="material-symbols:arrow-forward-rounded"
+  >
+    <template #body>
       <h2>
         <template v-if="!winner">
           Its even

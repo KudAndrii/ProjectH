@@ -1,37 +1,49 @@
 <script setup lang="ts">
-import type { Point } from '~/shared/types/point'
-import type { Player } from '~/shared/types/player'
-import type { FieldRules } from '#shared/types/field-rules'
-import { defineWinner } from '~/shared/utils/define-winner'
+import type { Point } from '#shared/types/point'
+import type { Player } from '#shared/types/player'
+import type { GameSettings } from '#shared/types/game-settings'
+import { defineWinner } from '#shared/utils/define-winner'
+import { useGameSocket } from '~/composables/useGameSocket'
 import ThePlayerIcon from '~/components/ThePlayerIcon.vue'
 import TheWinnerModal from '~/components/TheWinnerModal.vue'
-import { useGameSocket } from '~/composables/useGameSocket'
+import TheGameSettings from '~/components/TheGameSettings.vue'
 
 const overlay = useOverlay()
 const winnerModal = overlay.create(TheWinnerModal)
 
-const roomId = ref<string | null>(null)
-const currentPlayer = ref<Player>('cross')
-const myTurn = ref<boolean | undefined>(undefined)
-const winner = ref<Player | undefined>()
-const points = ref<Point[]>([])
-const fieldRules = reactive<FieldRules>({
-  columns: 3,
-  rows: 3,
-  pointsInRowToWin: 3
+const settingsOpened = ref(false)
+const gameSettings = reactive<GameSettings>({
+  mode: 'singleplayer',
+  fieldRules: {
+    columns: 3,
+    rows: 3,
+    pointsInRowToWin: 3
+  }
 })
 
-const { data, createRoom, joinRoom, makeMove } = useGameSocket(location.host)
+const currentPlayer = ref<Player>('cross')
+const myTurn = ref<boolean>(true)
+const winner = ref<Player | undefined>()
+const points = ref<Point[]>([])
 
-// Reactively handle server data
-watch(data, (newData) => {
-  const parsed = JSON.parse(newData)
-  console.warn('parsed: ', parsed)
-  console.warn('currentPlayer: ', currentPlayer.value)
+const { close, data, createRoom, joinRoom, makeMove } = useGameSocket(location.host)
+
+watch(gameSettings, (newValue) => {
+  if (newValue.mode === 'singleplayer') {
+    close()
+  }
+})
+
+watch(data, (newValue) => {
+  if (!newValue) {
+    return
+  }
+
+  const parsed = JSON.parse(newValue)
 
   switch (parsed.action) {
     case 'room-created':
-      roomId.value = parsed.sessionId
+      gameSettings.roomId = parsed.sessionId
       currentPlayer.value = 'cross'
       myTurn.value = true
       break;
@@ -39,15 +51,16 @@ watch(data, (newData) => {
     case 'room-joined':
       currentPlayer.value = 'circle'
       myTurn.value = false
-      fieldRules.columns = parsed.session.fieldRules.columns
-      fieldRules.rows = parsed.session.fieldRules.rows
-      fieldRules.pointsInRowToWin = parsed.session.fieldRules.pointsInRowToWin
       break;
 
     case 'move-made':
       myTurn.value = parsed.session.currentMove === currentPlayer.value
       points.value = [...parsed.session.points]
       winner.value = parsed.session.winner
+
+      if (gameOver.value) {
+        showTheWinner()
+      }
       break;
 
     case 'error':
@@ -58,12 +71,13 @@ watch(data, (newData) => {
       console.error('Unknown action', parsed.action)
       break;
   }
-
-  console.warn('myTurn: ', myTurn.value)
 })
 
+const gameOver = computed(() =>
+    !!winner.value || points.value.length === gameSettings.fieldRules.columns * gameSettings.fieldRules.rows)
+
 const addPoint = (x: number, y: number) => {
-  if (!roomId.value) {
+  if (gameSettings.mode === 'singleplayer') {
     const newPoint: Point = { X: x, Y: y, player: currentPlayer.value }
 
     if (points.value.some(point => point.X === newPoint.X && point.Y === newPoint.Y)) {
@@ -71,15 +85,15 @@ const addPoint = (x: number, y: number) => {
     }
 
     points.value = [...points.value, newPoint]
-    winner.value = defineWinner(points.value, fieldRules.pointsInRowToWin)
+    winner.value = defineWinner(points.value, gameSettings.fieldRules.pointsInRowToWin)
 
-    if (!!winner.value || points.value.length === fieldRules.columns * fieldRules.rows) {
+    if (gameOver.value) {
       showTheWinner()
     } else {
       currentPlayer.value = currentPlayer.value === 'cross' ? 'circle' : 'cross'
     }
-  } else if (myTurn.value) {
-    makeMove(roomId.value, x, y)
+  } else if (gameSettings.mode === 'host-multiplayer' || gameSettings.mode === 'participant-multiplayer') {
+    makeMove(gameSettings.roomId!, x, y)
   }
 }
 
@@ -87,11 +101,15 @@ async function showTheWinner() {
   winnerModal.patch({ winner: winner.value })
   const instance = winnerModal.open()
 
+  console.warn('Waiting for the modal to close')
   // waiting for the modal to close
   await instance.result
+  console.warn('The modal is closed')
 
   points.value = []
   winner.value = undefined
+  gameSettings.mode = 'singleplayer'
+  gameSettings.roomId = undefined
   currentPlayer.value = 'cross'
 }
 </script>
@@ -100,54 +118,40 @@ async function showTheWinner() {
   <NuxtContainer as="main">
     <NuxtCard variant="outline">
       <template #header>
-        <div>
-          <div class="multiplayer">
-            <h2 class="mb-3">
-              <span>Multiplayer</span>
-              <span v-if="!!roomId">(Room: {{ roomId }})</span>
-            </h2>
-            <div class="controls">
-              <NuxtButton label="Host" @click.stop="() => createRoom(fieldRules)"/>
-              <NuxtForm
-                  :state="{ roomId }"
-                  :validate="validationData => !validationData.roomId?.length ? [{ name: 'roomId', message: 'Required' }] : []"
-                  @submit="() => joinRoom(roomId!)"
-              >
-                <NuxtFormField name="roomId" label="Room ID">
-                  <NuxtInput v-model="roomId"/>
-                </NuxtFormField>
-                <NuxtButton type="submit" label="Join" class="mt-2" loading-auto/>
-              </NuxtForm>
-            </div>
-          </div>
-          <div class="text-center mt-6">
+        <div class="flex justify-between w-full">
+          <div class="self-center mx-auto flex items-center">
             <span>Current player:</span>
             <ThePlayerIcon :player="currentPlayer"/>
           </div>
+          <NuxtSlideover
+              v-model:open="settingsOpened"
+              title="Game Settings"
+              description="Configure game for yourself."
+          >
+            <NuxtButton
+                icon="material-symbols:settings-outline-rounded"
+                size="md"
+                color="primary"
+                variant="solid"
+                class="self-end"
+            />
+
+            <template #body>
+              <TheGameSettings
+                  v-model="gameSettings"
+                  @on-create-room="(rules) => createRoom(rules)"
+                  @on-join-room="(id) => joinRoom(id)"
+              />
+            </template>
+          </NuxtSlideover>
         </div>
       </template>
       <TheGamingField
           :points="points"
-          :dimensions="{ X: fieldRules.columns, Y: fieldRules.rows }"
+          :dimensions="{ X: gameSettings.fieldRules.columns, Y: gameSettings.fieldRules.rows }"
           @add-point="addPoint"
           :style="{ 'pointer-events': !!winner || !myTurn ? 'none' : 'unset' }"
       />
     </NuxtCard>
   </NuxtContainer>
 </template>
-
-<style scoped>
-.multiplayer {
-  h2 {
-    text-align: center;
-  }
-
-  .controls {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 3rem;
-    justify-content: center;
-    align-items: center;
-  }
-}
-</style>

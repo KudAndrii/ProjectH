@@ -1,5 +1,5 @@
-import type { Point } from '~/shared/types/point'
-import type { Player } from '~/shared/types/player'
+import type { Point } from '#shared/types/point'
+import type { Player } from '#shared/types/player'
 
 export function defineWinner(points: Point[], requiredRows: number): Player | undefined {
     const players: Player[] = [ 'cross', 'circle' ]
