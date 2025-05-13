@@ -1,9 +1,10 @@
 import type { FieldRules } from '#shared/types/field-rules'
 import { useWebSocket } from '@vueuse/core'
 
-export function useGameSocket(host: string) {
+export function useGameSocket(protocol: string, host: string) {
   //TODO: In prod: check if secure, then use 'wss://...'
-  const { status, data, send, open, close } = useWebSocket(`ws://${host}/api/games`, { immediate: false })
+  const webSocketsProtocol = protocol === 'https:' ? 'wss:' : 'ws:'
+  const { status, data, send, open, close } = useWebSocket(`${webSocketsProtocol}//${host}/api/games`, { immediate: false })
 
   // Create or join a room
   function createRoom(fieldRules: FieldRules) {

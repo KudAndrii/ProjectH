@@ -26,7 +26,7 @@ const myTurn = ref<boolean>(true)
 const winner = ref<Player | undefined>()
 const points = ref<Point[]>([])
 
-const { close, data, createRoom, joinRoom, makeMove } = useGameSocket(location.host)
+const { close, data, createRoom, joinRoom, makeMove } = useGameSocket(location.protocol, location.host)
 
 watch(gameSettings, (newValue) => {
   if (newValue.mode === 'singleplayer') {
@@ -51,6 +51,7 @@ watch(data, (newValue) => {
     case 'room-joined':
       currentPlayer.value = 'circle'
       myTurn.value = false
+      settingsOpened.value = false
       break;
 
     case 'move-made':

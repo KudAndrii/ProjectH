@@ -56,7 +56,7 @@ function findPoint(x: number, y: number): Point | undefined {
 }
 
 .gaming-field {
-  --cell-size: 25svh;
+  --cell-size: min(25svw, 25svh);
 
   position: relative;
   display: grid;
