@@ -1,7 +1,7 @@
 import type { Peer } from 'crossws'
 import { v4 as uuid } from 'uuid';
 import type { GameSession } from '#shared/types/game-session'
-import { defineWinner } from '#shared/utils/define-winner'
+import { makeMove as makeGameMove } from '#shared/utils/make-move'
 
 type ActionResult = {
   action: string
@@ -77,6 +77,7 @@ const createRoom: IGameAction = (peer, data) => {
   sessions[sessionId] = {
     sessionStarted: false,
     fieldRules: data.fieldRules,
+    gameFeatures: data.gameFeatures,
     currentMove: 'cross',
     points: [],
     winner: undefined
@@ -101,19 +102,14 @@ const joinRoom: IGameAction = (peer, data) => {
 const makeMove: IGameAction = (peer, data) => {
   const session = sessions[data.sessionId] ?? throwUndefinedRoom()
 
-  if (session.points.at(-1)?.player === session.currentMove) {
-    throw new Error('It is not your turn')
-  }
-
   const { x, y } = data.move
+  const newPoint = { X: x, Y: y, player: session.currentMove }
+  const moveResults =
+    makeGameMove(newPoint, session.points, session.gameFeatures, session.fieldRules.pointsInRowToWin)
 
-  if (session.points.some(point => point.X === x && point.Y === y)) {
-    throw new Error('Point already taken')
-  }
-
-  session.points.push({ X: x, Y: y, player: session.currentMove })
-  session.winner = defineWinner(session.points, session.fieldRules.pointsInRowToWin)
-  session.currentMove = session.currentMove === 'cross' ? 'circle' : 'cross'
+  session.points = moveResults.updatedPoints
+  session.winner = moveResults.winner
+  session.currentMove = moveResults.nextTurn
 
   return { action: 'move-made', session }
 }

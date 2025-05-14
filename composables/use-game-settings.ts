@@ -7,6 +7,9 @@ export const useGameSettings = () => {
       columns: 3,
       rows: 3,
       pointsInRowToWin: 3
+    },
+    gameFeatures: {
+      infinitePlay: false
     }
   }))
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Point } from '#shared/types/point'
-import { defineWinner } from '#shared/utils/define-winner'
 import { MULTIPLAYER_MODES } from '#shared/utils/constants'
+import { makeMove as makeGameMove } from '#shared/utils/make-move'
 import { useGameSocket } from '~/composables/use-game-socket'
 import { useGameSettings } from '~/composables/use-game-settings'
 import { useGameState } from '~/composables/use-game-state'
@@ -86,20 +86,23 @@ const addPoint = (x: number, y: number) => {
   } else if (gameSettings.value.mode === 'singleplayer') {
     const newPoint: Point = { X: x, Y: y, player: gameState.value.currentPlayer }
 
-    if (gameState.value.points.some(point => point.X === newPoint.X && point.Y === newPoint.Y)) {
-      return
+    try {
+      const moveResults = makeGameMove(newPoint, gameState.value.points, gameSettings.value.gameFeatures,
+          gameSettings.value.fieldRules.pointsInRowToWin)
+
+      gameState.value.points = [ ...moveResults.updatedPoints ]
+      gameState.value.winner = moveResults.winner
+      gameState.value.currentMove = moveResults.nextTurn
+
+      if (gameOver.value) {
+        showTheWinner()
+        return
+      }
+
+      gameState.value.currentPlayer = gameState.value.currentMove
+    } catch {
+      // just skip in singleplayer
     }
-
-    gameState.value.points = [ ...gameState.value.points, newPoint ]
-    gameState.value.winner = defineWinner(gameState.value.points, gameSettings.value.fieldRules.pointsInRowToWin)
-
-    if (gameOver.value) {
-      showTheWinner()
-      return
-    }
-
-    gameState.value.currentPlayer = gameState.value.currentPlayer === 'cross' ? 'circle' : 'cross'
-    gameState.value.currentMove = gameState.value.currentPlayer
   }
 }
 
@@ -145,7 +148,7 @@ async function showTheWinner() {
 
             <template #body>
               <TheGameSettings
-                  @on-create-room="(rules) => createRoom(rules)"
+                  @on-create-room="(rules, features) => createRoom(rules, features)"
                   @on-join-room="(id) => joinRoom(id)"
               />
             </template>

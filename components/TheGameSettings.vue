@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { FieldRules } from '#shared/types/field-rules'
+import type { RadioGroupItem } from '#ui/components/RadioGroup.vue'
+import type { GameFeatures } from '#shared/types/game-features'
 import { useGameSettings } from '~/composables/use-game-settings'
 import { useRoomId } from '~/composables/use-room-id'
-import type { RadioGroupItem } from '#ui/components/RadioGroup.vue'
 
 const emit = defineEmits<{
-  'on-create-room': [fieldRules: FieldRules]
+  'on-create-room': [FieldRules, GameFeatures]
   'on-join-room': [roomId: string]
 }>()
 
@@ -43,7 +44,7 @@ const items = ref<RadioGroupItem[]>([
     <NuxtRadioGroup v-model="gameSettings.mode" color="primary" variant="table" default-value="singleplayer" :items="items" />
     <template #footer>
       <NuxtButtonGroup v-if="gameSettings.mode === 'host-multiplayer'">
-        <NuxtButton label="Host" @click.stop="emit('on-create-room', gameSettings.fieldRules)" />
+        <NuxtButton label="Host" @click.stop="emit('on-create-room', gameSettings.fieldRules, gameSettings.gameFeatures)" />
         <NuxtInput v-model="roomId" readonly color="neutral" variant="outline" placeholder="Session ID" />
         <NuxtTooltip v-if="clipboardSupported" text="Copy to clipboard">
           <NuxtButton
@@ -59,6 +60,22 @@ const items = ref<RadioGroupItem[]>([
         <NuxtButton label="Join" @click.stop="!!roomId && emit('on-join-room', roomId)" />
       </NuxtButtonGroup>
     </template>
+  </NuxtCard>
+
+  <NuxtCard class="mt-4">
+    <template #header>
+      <h3 class="justify-self-start w-full">
+        Game Features
+      </h3>
+    </template>
+    <div class="flex flex-col gap-3">
+      <NuxtSwitch
+          v-model="gameSettings.gameFeatures.infinitePlay"
+          unchecked-icon="i-lucide-x"
+          checked-icon="i-lucide-check"
+          label="Infinite play"
+      />
+    </div>
   </NuxtCard>
 
   <NuxtCard class="mt-4">
