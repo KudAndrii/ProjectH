@@ -39,6 +39,14 @@ export default defineWebSocketHandler({
           actionResult = makeMove(peer, data)
           break
 
+        case 'restart':
+          actionResult = restart(peer, data)
+          break
+
+        case 'end-session':
+          actionResult = endSession(peer, data)
+          break;
+
         default:
           throw new Error('Unknown action')
       }
@@ -53,6 +61,8 @@ export default defineWebSocketHandler({
 
     // Publish to all other peers in the room except the publisher
     if (!!data.sessionId && action === 'make-move') {
+      peer.publish(data.sessionId, JSON.stringify(actionResult))
+    } else if (action === 'end-session') {
       peer.publish(data.sessionId, JSON.stringify(actionResult))
     }
 
@@ -106,6 +116,26 @@ const makeMove: IGameAction = (peer, data) => {
   session.currentMove = session.currentMove === 'cross' ? 'circle' : 'cross'
 
   return { action: 'move-made', session }
+}
+
+const restart: IGameAction = (peer, data) => {
+  const session = sessions[data.sessionId] ?? throwUndefinedRoom()
+
+  session.currentMove = 'cross'
+  session.points = []
+  session.winner = undefined
+
+  return { action: 'restarted', session }
+}
+
+const endSession: IGameAction = (peer, data) => {
+  if (!(data.sessionId in sessions)) {
+    throwUndefinedRoom()
+  }
+
+  delete sessions[data.sessionId]
+
+  return { action: 'session-ended', sessionId: data.sessionId }
 }
 
 function throwUndefinedRoom() {

@@ -4,13 +4,16 @@ import type { Player } from '#shared/types/player'
 defineProps<{
   winner: Player | undefined
 }>()
+
+const emit = defineEmits<{ close: [boolean] }>()
 </script>
 
 <template>
   <NuxtModal
       title="Game over"
-      description="After closing this model the new game will be started."
+      description="Click 'Again' if you want to play again or close modal if you wanna leave."
       close-icon="material-symbols:arrow-forward-rounded"
+      :close="{ onClick: () => emit('close', false) }"
   >
     <template #body>
       <h2>
@@ -22,6 +25,9 @@ defineProps<{
           <span :class="winner">{{ winner }}</span>
         </template>
       </h2>
+    </template>
+    <template #footer>
+      <NuxtButton label="Again" @click="emit('close', true)" />
     </template>
   </NuxtModal>
 </template>

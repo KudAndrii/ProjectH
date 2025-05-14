@@ -1,11 +1,9 @@
 import type { Player } from '#shared/types/player'
 import type { Point } from '#shared/types/point'
-import type { FieldRules } from '#shared/types/field-rules'
 
-export type GameSession = {
-  sessionStarted: boolean
-  fieldRules: FieldRules
+export type GameState = {
   currentMove: Player
+  currentPlayer: Player
   points: Point[]
   winner: Player | undefined
 }

@@ -16,7 +16,6 @@ export function useGameSocket(protocol: string, host: string) {
   }
 
   function joinRoom(room: string) {
-    console.warn('joining the room: ', room)
     if (status.value !== 'OPEN') {
       open()
     }
@@ -32,12 +31,30 @@ export function useGameSocket(protocol: string, host: string) {
     send(JSON.stringify({ action: 'make-move', data: { sessionId: room, move: { x, y } } }))
   }
 
+  function restart(room: string) {
+    if (status.value !== 'OPEN') {
+      throw new Error('WebSocket is not open')
+    }
+
+    send(JSON.stringify({ action: 'restart', data: { sessionId: room } }))
+  }
+
+  function endSession(room: string) {
+    if (status.value !== 'OPEN') {
+      throw new Error('WebSocket is not open')
+    }
+
+    send(JSON.stringify({ action: 'end-session', data: { sessionId: room } }))
+  }
+
   return {
     status,
     close,
     data,
     createRoom,
     joinRoom,
-    makeMove
+    makeMove,
+    restart,
+    endSession
   }
 }

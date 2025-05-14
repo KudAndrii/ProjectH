@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { Point } from '#shared/types/point'
-import type { Player } from '#shared/types/player'
-import type { GameSettings } from '#shared/types/game-settings'
 import { defineWinner } from '#shared/utils/define-winner'
-import { useGameSocket } from '~/composables/useGameSocket'
+import { MULTIPLAYER_MODES } from '#shared/utils/constants'
+import { useGameSocket } from '~/composables/use-game-socket'
+import { useGameSettings } from '~/composables/use-game-settings'
+import { useGameState } from '~/composables/use-game-state'
+import { useRoomId } from '~/composables/use-room-id'
 import ThePlayerIcon from '~/components/ThePlayerIcon.vue'
 import TheWinnerModal from '~/components/TheWinnerModal.vue'
 import TheGameSettings from '~/components/TheGameSettings.vue'
@@ -11,22 +13,16 @@ import TheGameSettings from '~/components/TheGameSettings.vue'
 const overlay = useOverlay()
 const winnerModal = overlay.create(TheWinnerModal)
 
+const { close, data, createRoom, joinRoom, makeMove, restart, endSession } =
+    useGameSocket(location.protocol, location.host)
+const { gameSettings } = useGameSettings()
+const { gameState, resetGameState } = useGameState()
+const roomId = useRoomId()
 const settingsOpened = ref(false)
-const gameSettings = reactive<GameSettings>({
-  mode: 'singleplayer',
-  fieldRules: {
-    columns: 3,
-    rows: 3,
-    pointsInRowToWin: 3
-  }
-})
 
-const currentPlayer = ref<Player>('cross')
-const myTurn = ref<boolean>(true)
-const winner = ref<Player | undefined>()
-const points = ref<Point[]>([])
-
-const { close, data, createRoom, joinRoom, makeMove } = useGameSocket(location.protocol, location.host)
+const myTurn = computed(() => gameState.value.currentMove === gameState.value.currentPlayer)
+const gameOver = computed(() => !!gameState.value.winner ||
+    gameState.value.points.length === gameSettings.value.fieldRules.columns * gameSettings.value.fieldRules.rows)
 
 watch(gameSettings, (newValue) => {
   if (newValue.mode === 'singleplayer') {
@@ -43,25 +39,35 @@ watch(data, (newValue) => {
 
   switch (parsed.action) {
     case 'room-created':
-      gameSettings.roomId = parsed.sessionId
-      currentPlayer.value = 'cross'
-      myTurn.value = true
+      roomId.value = parsed.sessionId
+      gameState.value.currentPlayer = 'cross'
       break;
 
     case 'room-joined':
-      currentPlayer.value = 'circle'
-      myTurn.value = false
+      gameState.value.currentPlayer = 'circle'
       settingsOpened.value = false
       break;
 
     case 'move-made':
-      myTurn.value = parsed.session.currentMove === currentPlayer.value
-      points.value = [...parsed.session.points]
-      winner.value = parsed.session.winner
+      gameState.value.points = [ ...parsed.session.points ]
+      gameState.value.currentMove = parsed.session.currentMove
+      gameState.value.winner = parsed.session.winner
 
       if (gameOver.value) {
         showTheWinner()
       }
+      break;
+
+    case 'restarted':
+      gameState.value.points = [ ...parsed.session.points ]
+      gameState.value.currentMove = parsed.session.currentMove
+      gameState.value.winner = parsed.session.winner
+      break
+
+    case 'session-ended':
+      gameSettings.value.mode = 'singleplayer'
+      roomId.value = undefined
+      resetGameState(false)
       break;
 
     case 'error':
@@ -74,44 +80,44 @@ watch(data, (newValue) => {
   }
 })
 
-const gameOver = computed(() =>
-    !!winner.value || points.value.length === gameSettings.fieldRules.columns * gameSettings.fieldRules.rows)
-
 const addPoint = (x: number, y: number) => {
-  if (gameSettings.mode === 'singleplayer') {
-    const newPoint: Point = { X: x, Y: y, player: currentPlayer.value }
+  if (MULTIPLAYER_MODES.includes(gameSettings.value.mode)) {
+    !!roomId.value && makeMove(roomId.value, x, y)
+  } else if (gameSettings.value.mode === 'singleplayer') {
+    const newPoint: Point = { X: x, Y: y, player: gameState.value.currentPlayer }
 
-    if (points.value.some(point => point.X === newPoint.X && point.Y === newPoint.Y)) {
+    if (gameState.value.points.some(point => point.X === newPoint.X && point.Y === newPoint.Y)) {
       return
     }
 
-    points.value = [...points.value, newPoint]
-    winner.value = defineWinner(points.value, gameSettings.fieldRules.pointsInRowToWin)
+    gameState.value.points = [ ...gameState.value.points, newPoint ]
+    gameState.value.winner = defineWinner(gameState.value.points, gameSettings.value.fieldRules.pointsInRowToWin)
 
     if (gameOver.value) {
       showTheWinner()
-    } else {
-      currentPlayer.value = currentPlayer.value === 'cross' ? 'circle' : 'cross'
+      return
     }
-  } else if (gameSettings.mode === 'host-multiplayer' || gameSettings.mode === 'participant-multiplayer') {
-    makeMove(gameSettings.roomId!, x, y)
+
+    gameState.value.currentPlayer = gameState.value.currentPlayer === 'cross' ? 'circle' : 'cross'
+    gameState.value.currentMove = gameState.value.currentPlayer
   }
 }
 
 async function showTheWinner() {
-  winnerModal.patch({ winner: winner.value })
+  winnerModal.patch({ winner: gameState.value.winner })
   const instance = winnerModal.open()
 
-  console.warn('Waiting for the modal to close')
   // waiting for the modal to close
-  await instance.result
-  console.warn('The modal is closed')
+  const playAgain = await instance.result
+  const isMultiplayer = MULTIPLAYER_MODES.includes(gameSettings.value.mode)
 
-  points.value = []
-  winner.value = undefined
-  gameSettings.mode = 'singleplayer'
-  gameSettings.roomId = undefined
-  currentPlayer.value = 'cross'
+  resetGameState(isMultiplayer)
+
+  if (!playAgain) {
+    !!roomId.value && endSession(roomId.value)
+  } else {
+    !!roomId.value && restart(roomId.value)
+  }
 }
 </script>
 
@@ -122,7 +128,7 @@ async function showTheWinner() {
         <div class="flex justify-between w-full">
           <div class="self-center mx-auto flex items-center">
             <span>Current player:</span>
-            <ThePlayerIcon :player="currentPlayer"/>
+            <ThePlayerIcon :player="gameState.currentPlayer"/>
           </div>
           <NuxtSlideover
               v-model:open="settingsOpened"
@@ -139,7 +145,6 @@ async function showTheWinner() {
 
             <template #body>
               <TheGameSettings
-                  v-model="gameSettings"
                   @on-create-room="(rules) => createRoom(rules)"
                   @on-join-room="(id) => joinRoom(id)"
               />
@@ -148,10 +153,10 @@ async function showTheWinner() {
         </div>
       </template>
       <TheGamingField
-          :points="points"
+          :points="gameState.points"
           :dimensions="{ X: gameSettings.fieldRules.columns, Y: gameSettings.fieldRules.rows }"
           @add-point="addPoint"
-          :style="{ 'pointer-events': !!winner || !myTurn ? 'none' : 'unset' }"
+          :class="{ 'pointer-events-none': !myTurn }"
       />
     </NuxtCard>
   </NuxtContainer>

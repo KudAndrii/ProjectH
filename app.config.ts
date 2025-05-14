@@ -10,7 +10,9 @@ export default defineAppConfig({
     modal: {
       slots: {
         title: 'text-start',
-        content: 'fixed bg-default divide-y divide-default flex flex-col focus:outline-none text-center p-2'
+        description: 'text-start',
+        content: 'fixed bg-default divide-y divide-default flex flex-col focus:outline-none text-center p-2',
+        footer: 'flex justify-end'
       }
     }
   }
