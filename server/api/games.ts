@@ -71,6 +71,13 @@ export default defineWebSocketHandler({
 })
 
 const createRoom: IGameAction = (peer, data) => {
+  const sessionsCount: number = Object.keys(sessions).length
+  const config = useRuntimeConfig()
+
+  if (sessionsCount >= config.sessionsLimit) {
+    throw new Error('Server is full, try again later')
+  }
+
   const sessionId = uuid()
   peer.subscribe(sessionId)
 
