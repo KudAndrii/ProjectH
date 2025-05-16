@@ -2,7 +2,7 @@
 import type { Point } from '#shared/types/point'
 import { MULTIPLAYER_MODES } from '#shared/utils/constants'
 import { makeMove as makeGameMove } from '#shared/utils/make-move'
-import { useGameSocket } from '~/composables/use-game-socket'
+import { useGameWebSocket } from '~/composables/use-game-web-socket'
 import { useGameSettings } from '~/composables/use-game-settings'
 import { useGameState } from '~/composables/use-game-state'
 import { useRoomId } from '~/composables/use-room-id'
@@ -14,7 +14,7 @@ const overlay = useOverlay()
 const winnerModal = overlay.create(TheWinnerModal)
 
 const { close, data, createRoom, joinRoom, makeMove, restart, endSession } =
-    useGameSocket(location.protocol, location.host)
+    useGameWebSocket(location.protocol, location.host)
 const { gameSettings } = useGameSettings()
 const { gameState, resetGameState } = useGameState()
 const roomId = useRoomId()

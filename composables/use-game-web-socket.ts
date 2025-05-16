@@ -2,9 +2,9 @@ import type { FieldRules } from '#shared/types/field-rules'
 import type { GameFeatures } from '#shared/types/game-features'
 import { useWebSocket } from '@vueuse/core'
 
-export function useGameSocket(protocol: string, host: string) {
+export function useGameWebSocket(protocol: string, host: string) {
   const webSocketsProtocol = protocol === 'https:' ? 'wss:' : 'ws:'
-  const { status, data, send, open, close } = useWebSocket(`${webSocketsProtocol}//${host}/api/games`, { immediate: false })
+  const { status, data, send, open, close } = useWebSocket(`${webSocketsProtocol}//${host}/api/games/ws`, { immediate: false })
 
   // Create or join a room
   function createRoom(fieldRules: FieldRules, gameFeatures: GameFeatures) {
