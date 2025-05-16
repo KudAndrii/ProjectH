@@ -15,10 +15,5 @@ export default defineNuxtConfig({
   },
   modules: ['@nuxt/ui', '@nuxt/icon', '@vueuse/nuxt'],
   css: ['~/assets/css/main.css'],
-  ui: { prefix: 'Nuxt', fonts: false },
-  nitro: {
-    experimental: {
-      websocket: true
-    }
-  }
+  ui: { prefix: 'Nuxt', fonts: false }
 })

@@ -2,7 +2,7 @@
 import type { Point } from '#shared/types/point'
 import { MULTIPLAYER_MODES } from '#shared/utils/constants'
 import { makeMove as makeGameMove } from '#shared/utils/make-move'
-import { useGameWebSocket } from '~/composables/use-game-web-socket'
+import { useGameSSE } from '~/composables/use-game-sse'
 import { useGameSettings } from '~/composables/use-game-settings'
 import { useGameState } from '~/composables/use-game-state'
 import { useRoomId } from '~/composables/use-room-id'
@@ -14,7 +14,7 @@ const overlay = useOverlay()
 const winnerModal = overlay.create(TheWinnerModal)
 
 const { close, data, createRoom, joinRoom, makeMove, restart, endSession } =
-    useGameWebSocket(location.protocol, location.host)
+    useGameSSE()
 const { gameSettings } = useGameSettings()
 const { gameState, resetGameState } = useGameState()
 const roomId = useRoomId()
@@ -70,6 +70,15 @@ watch(data, (newValue) => {
       resetGameState(false)
       break;
 
+    case 'session-state':
+      // Handle initial state from SSE connection
+      if (parsed.session) {
+        gameState.value.points = [ ...parsed.session.points ]
+        gameState.value.currentMove = parsed.session.currentMove
+        gameState.value.winner = parsed.session.winner
+      }
+      break;
+
     case 'error':
       console.error('Error from the server: ', parsed.message)
       break;
@@ -80,9 +89,18 @@ watch(data, (newValue) => {
   }
 })
 
-const addPoint = (x: number, y: number) => {
+const addPoint = async (x: number, y: number) => {
   if (MULTIPLAYER_MODES.includes(gameSettings.value.mode)) {
-    !!roomId.value && makeMove(roomId.value, x, y)
+    if (roomId.value) {
+      try {
+        // Make the move via HTTP, but wait for the SSE update to actually update the UI
+        await makeMove(roomId.value, x, y)
+        // Note: We don't update the state here directly anymore
+        // as the SSE data watcher will handle the update
+      } catch (error) {
+        console.error('Error making move:', error)
+      }
+    }
   } else if (gameSettings.value.mode === 'singleplayer') {
     const newPoint: Point = { X: x, Y: y, player: gameState.value.currentPlayer }
 
