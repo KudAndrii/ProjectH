@@ -1,13 +1,16 @@
 import { defineEventHandler, readBody } from 'h3';
-import { v4 as uuid } from 'uuid';
-import type { GameSession } from '#shared/types/game-session';
 import { makeMove as makeGameMove } from '#shared/utils/make-move';
-import type { SessionWithClients } from '~/server/plugins/setup-session-store';
 
 // Get the global sessions store
 const getSessionsStore = () => {
   return useNitroApp().sessionsStore;
 };
+
+const generateCode = () => {
+  const array = new Uint8Array(6); // Create an array with space for 6 random numbers
+  crypto.getRandomValues(array); // Populate the array with cryptographically secure random values
+  return Array.from(array, (value) => String.fromCharCode(65 + (value % 26))).join('');
+}
 
 type ActionResult = {
   action: string;
@@ -75,7 +78,7 @@ const createRoom: GameActionHandler = (data) => {
     throw new Error('Server is full, try again later');
   }
 
-  const sessionId = uuid();
+  const sessionId = generateCode();
   
   // Create new session
   sessionsStore[sessionId] = {
