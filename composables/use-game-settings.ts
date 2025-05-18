@@ -1,6 +1,7 @@
 import type { GameSettings } from '#shared/types/game-settings'
 
 export const useGameSettings = () => {
+  const settingsOpened = useState<boolean>('game-settings-opened', () => false)
   const gameSettings = useState<GameSettings>('game-settings', () => ({
     mode: 'singleplayer',
     fieldRules: {
@@ -13,5 +14,5 @@ export const useGameSettings = () => {
     }
   }))
 
-  return { gameSettings }
+  return { settingsOpened, gameSettings }
 }

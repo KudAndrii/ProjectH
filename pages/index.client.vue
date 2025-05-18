@@ -5,7 +5,6 @@ import { makeMove as makeGameMove } from '#shared/utils/make-move'
 import { useGameSSE } from '~/composables/use-game-sse'
 import { useGameSettings } from '~/composables/use-game-settings'
 import { useGameState } from '~/composables/use-game-state'
-import { useRoomId } from '~/composables/use-room-id'
 import ThePlayerIcon from '~/components/ThePlayerIcon.vue'
 import TheWinnerModal from '~/components/TheWinnerModal.vue'
 import TheGameSettings from '~/components/TheGameSettings.vue'
@@ -13,88 +12,36 @@ import TheGameSettings from '~/components/TheGameSettings.vue'
 const overlay = useOverlay()
 const winnerModal = overlay.create(TheWinnerModal)
 
-const { close, data, createRoom, joinRoom, makeMove, restart, endSession } =
-    useGameSSE()
-const { gameSettings } = useGameSettings()
+const { sessionId, session, makeMove, restart, endSession } = useGameSSE()
+const { settingsOpened, gameSettings } = useGameSettings()
 const { gameState, resetGameState } = useGameState()
-const roomId = useRoomId()
-const settingsOpened = ref(false)
-
 const myTurn = computed(() => gameState.value.currentMove === gameState.value.currentPlayer)
 const gameOver = computed(() => !!gameState.value.winner ||
     gameState.value.points.length === gameSettings.value.fieldRules.columns * gameSettings.value.fieldRules.rows)
 
-watch(gameSettings, (newValue) => {
-  if (newValue.mode === 'singleplayer') {
-    close()
-  }
-})
-
-watch(data, (newValue) => {
+watch(session, (newValue) => {
   if (!newValue) {
     return
   }
 
-  const parsed = JSON.parse(newValue)
+  gameState.value = {
+    ...gameState.value,
+    currentMove: newValue.currentMove,
+    points: newValue.points ?? [],
+    winner: newValue.winner
+  }
 
-  switch (parsed.action) {
-    case 'room-created':
-      roomId.value = parsed.sessionId
-      gameState.value.currentPlayer = 'cross'
-      break;
-
-    case 'room-joined':
-      gameState.value.currentPlayer = 'circle'
-      settingsOpened.value = false
-      break;
-
-    case 'move-made':
-      gameState.value.points = [ ...parsed.session.points ]
-      gameState.value.currentMove = parsed.session.currentMove
-      gameState.value.winner = parsed.session.winner
-
-      if (gameOver.value) {
-        showTheWinner()
-      }
-      break;
-
-    case 'restarted':
-      gameState.value.points = [ ...parsed.session.points ]
-      gameState.value.currentMove = parsed.session.currentMove
-      gameState.value.winner = parsed.session.winner
-      break
-
-    case 'session-ended':
-      gameSettings.value.mode = 'singleplayer'
-      roomId.value = undefined
-      resetGameState(false)
-      break;
-
-    case 'session-state':
-      // Handle initial state from SSE connection
-      if (parsed.session) {
-        gameState.value.points = [ ...parsed.session.points ]
-        gameState.value.currentMove = parsed.session.currentMove
-        gameState.value.winner = parsed.session.winner
-      }
-      break;
-
-    case 'error':
-      console.error('Error from the server: ', parsed.message)
-      break;
-
-    default:
-      console.error('Unknown action', parsed.action)
-      break;
+  if (gameOver.value) {
+    showTheWinner()
   }
 })
 
 const addPoint = async (x: number, y: number) => {
   if (MULTIPLAYER_MODES.includes(gameSettings.value.mode)) {
-    if (roomId.value) {
+    if (sessionId.value) {
       try {
         // Make the move via HTTP, but wait for the SSE update to actually update the UI
-        await makeMove(roomId.value, x, y)
+        await makeMove(x, y)
         // Note: We don't update the state here directly anymore
         // as the SSE data watcher will handle the update
       } catch (error) {
@@ -130,15 +77,16 @@ async function showTheWinner() {
 
   // waiting for the modal to close
   const playAgain = await instance.result
-  const isMultiplayer = MULTIPLAYER_MODES.includes(gameSettings.value.mode)
+  let isMultiplayer = MULTIPLAYER_MODES.includes(gameSettings.value.mode)
+
+  if (isMultiplayer) {
+    const action = playAgain ? restart : endSession
+    await action()
+    isMultiplayer = playAgain
+
+  }
 
   resetGameState(isMultiplayer)
-
-  if (!playAgain) {
-    !!roomId.value && endSession(roomId.value)
-  } else {
-    !!roomId.value && restart(roomId.value)
-  }
 }
 </script>
 
@@ -165,10 +113,7 @@ async function showTheWinner() {
             />
 
             <template #body>
-              <TheGameSettings
-                  @on-create-room="(rules, features) => createRoom(rules, features)"
-                  @on-join-room="(id) => joinRoom(id)"
-              />
+              <TheGameSettings />
             </template>
           </NuxtSlideover>
         </div>

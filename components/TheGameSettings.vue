@@ -1,19 +1,12 @@
 <script setup lang="ts">
-import type { FieldRules } from '#shared/types/field-rules'
 import type { RadioGroupItem } from '#ui/components/RadioGroup.vue'
-import type { GameFeatures } from '#shared/types/game-features'
 import { useGameSettings } from '~/composables/use-game-settings'
-import { useRoomId } from '~/composables/use-room-id'
-
-const emit = defineEmits<{
-  'on-create-room': [FieldRules, GameFeatures]
-  'on-join-room': [roomId: string]
-}>()
+import { useGameSSE } from '~/composables/use-game-sse'
 
 const toast = useToast()
 const { copy: copyToClipboard, isSupported: clipboardSupported } = useClipboard()
 const { gameSettings } = useGameSettings()
-const roomId = useRoomId()
+const { sessionId, createRoom, joinRoom } = useGameSSE()
 
 const items = ref<RadioGroupItem[]>([
   {
@@ -44,11 +37,11 @@ const items = ref<RadioGroupItem[]>([
     <NuxtRadioGroup v-model="gameSettings.mode" color="primary" variant="table" default-value="singleplayer" :items="items" />
     <template #footer>
       <NuxtButtonGroup v-if="gameSettings.mode === 'host-multiplayer'">
-        <NuxtButton label="Host" @click.stop="emit('on-create-room', gameSettings.fieldRules, gameSettings.gameFeatures)" />
-        <NuxtInput v-model="roomId" readonly color="neutral" variant="outline" placeholder="Session ID" />
+        <NuxtButton label="Host" @click.stop="createRoom(gameSettings.fieldRules, gameSettings.gameFeatures)" />
+        <NuxtInput v-model="sessionId" readonly color="neutral" variant="outline" placeholder="Session ID" />
         <NuxtTooltip v-if="clipboardSupported" text="Copy to clipboard">
           <NuxtButton
-              @click.stop="!!roomId && !!copyToClipboard(roomId) && toast.add({ title: 'Session ID copied to the clipboard' })"
+              @click.stop="!!sessionId && !!copyToClipboard(sessionId) && toast.add({ title: 'Session ID copied to the clipboard' })"
               color="neutral"
               variant="subtle"
               icon="material-symbols:content-copy"
@@ -56,8 +49,8 @@ const items = ref<RadioGroupItem[]>([
         </NuxtTooltip>
       </NuxtButtonGroup>
       <NuxtButtonGroup v-else-if="gameSettings.mode === 'participant-multiplayer'">
-        <NuxtInput v-model="roomId" color="neutral" variant="outline" placeholder="Enter a session ID" />
-        <NuxtButton label="Join" @click.stop="!!roomId && emit('on-join-room', roomId)" />
+        <NuxtInput v-model="sessionId" color="neutral" variant="outline" placeholder="Enter a session ID" />
+        <NuxtButton label="Join" @click.stop="!!sessionId && joinRoom(sessionId)" />
       </NuxtButtonGroup>
     </template>
   </NuxtCard>

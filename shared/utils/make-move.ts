@@ -5,10 +5,12 @@ import { defineWinner } from '#shared/utils/define-winner'
 
 export const makeMove = (newPoint: Point, existingPoints: Point[], gameFeatures: GameFeatures, pointsInRowToWin: number) => {
   if (existingPoints.at(-1)?.player === newPoint.player) {
+    console.error('error-details: ', { newPoint, existingPoints })
     throw new Error('Against rules making a move 2 times in a row')
   }
 
   if (existingPoints.some(point => point.X === newPoint.X && point.Y === newPoint.Y)) {
+    console.error('error-details: ', { newPoint, existingPoints })
     throw new Error('Against rules making a move on a taken point')
   }
 

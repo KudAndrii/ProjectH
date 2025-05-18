@@ -1,107 +1,114 @@
 import type { FieldRules } from '#shared/types/field-rules'
 import type { GameFeatures } from '#shared/types/game-features'
-import { ref } from 'vue'
+import type { GameSession } from '#shared/types/game-session'
+import { useGameState } from '~/composables/use-game-state'
+import { useGameSettings } from '~/composables/use-game-settings'
 
 export function useGameSSE() {
-  const data = ref<string | null>(null)
-  const status = ref<'CONNECTING' | 'OPEN' | 'CLOSING' | 'CLOSED'>('CLOSED')
+  const { settingsOpened, gameSettings } = useGameSettings()
+  const { gameState } = useGameState()
+  const sessionId = useState<string | null>('game-session-id', () => null)
+  const session = useState<GameSession | null>('game-session', () => null)
+  const status = useState<'CONNECTING' | 'OPEN' | 'CLOSING' | 'CLOSED'>(
+    'game-session-status', () => 'CLOSED')
   let eventSource: EventSource | null = null
   
   // Create or join a room
   async function createRoom(fieldRules: FieldRules, gameFeatures: GameFeatures) {
-    const response = await $fetch('/api/games', {
+    const response = await $fetch('/api/games/create-room', {
       method: 'POST',
-      body: { 
-        action: 'create-room', 
-        data: { fieldRules, gameFeatures } 
-      }
+      body: { fieldRules, gameFeatures }
     })
-    
-    data.value = JSON.stringify(response)
-    
-    // Connect to SSE after creating a room as well
-    if (response.sessionId) {
-      connectToEventSource(response.sessionId)
+
+    sessionId.value = response.sessionId
+    session.value = { ...response.session }
+
+    if (!response.sessionId) {
+      throw new Error('Failed to create a room')
     }
-    
-    return response
+
+    // Connect to SSE after creating a room
+    connectToEventSource()
   }
 
   async function joinRoom(room: string) {
-    const response = await $fetch('/api/games', {
-      method: 'POST',
-      body: { 
-        action: 'join-room', 
-        data: { sessionId: room } 
-      }
+    if (!room) {
+      throw new Error('Room is not defined')
+    }
+
+    const response = await $fetch('/api/games/join-room', {
+      // @ts-ignore
+      method: 'PATCH',
+      body: { sessionId: room }
     })
-    
-    data.value = JSON.stringify(response)
+
+    gameState.value = {
+      ...gameState.value,
+      currentPlayer: 'circle'
+    }
+    sessionId.value = room
+    session.value = { ...(response as GameSession) }
     
     // Connect to SSE after joining
-    connectToEventSource(room)
-    
-    return response
+    connectToEventSource()
   }
 
-  async function makeMove(room: string, x: number, y: number) {
-    const response = await $fetch('/api/games', {
-      method: 'POST',
-      body: { 
-        action: 'make-move', 
-        data: { sessionId: room, move: { x, y } } 
-      }
+  async function makeMove(x: number, y: number) {
+    const response = await $fetch('/api/games/make-move', {
+      // @ts-ignore
+      method: 'PATCH',
+      body: { sessionId: sessionId.value, move: { x, y } }
     })
-    
-    // Update local data immediately after making a move
-    // This ensures the host also sees their own moves immediately
-    if (response && response.action === 'move-made') {
-      data.value = JSON.stringify(response)
+
+    session.value = { ...(response as GameSession) }
+  }
+
+  async function restart() {
+    if (!sessionId.value) {
+      throw new Error('Session is not defined')
     }
-    
-    return response
+
+    const response = await $fetch('/api/games/restart', {
+      // @ts-ignore
+      method: 'PATCH',
+      body: { sessionId: sessionId.value }
+    })
+
+    session.value = { ...(response as GameSession) }
   }
 
-  async function restart(room: string) {
-    const response = await $fetch('/api/games', {
-      method: 'POST',
-      body: { 
-        action: 'restart', 
-        data: { sessionId: room } 
-      }
-    })
-    
-    return response
-  }
+  async function endSession() {
+    if (!sessionId.value) {
+      throw new Error('Session is not defined')
+    }
 
-  async function endSession(room: string) {
-    const response = await $fetch('/api/games', {
-      method: 'POST',
-      body: { 
-        action: 'end-session', 
-        data: { sessionId: room } 
-      }
+    await $fetch('/api/games/end-session', {
+      // @ts-ignore
+      method: 'DELETE',
+      body: { sessionId: sessionId.value }
     })
-    
+
     close()
-    return response
   }
 
-  function connectToEventSource(sessionId: string) {
+  function connectToEventSource() {
     if (eventSource) {
       eventSource.close()
     }
     
     status.value = 'CONNECTING'
     
-    eventSource = new EventSource(`/api/games/sse/${sessionId}`)
+    eventSource = new EventSource(`/api/games/sse/${sessionId.value}`)
     
     eventSource.onopen = () => {
       status.value = 'OPEN'
+      if (gameSettings.value.mode === 'participant-multiplayer' && settingsOpened.value) {
+        settingsOpened.value = false
+      }
     }
     
     eventSource.onmessage = (event) => {
-      data.value = event.data
+      session.value = JSON.parse(event.data)
     }
     
     eventSource.onerror = () => {
@@ -112,6 +119,10 @@ export function useGameSSE() {
   }
 
   function close() {
+    gameSettings.value.mode = 'singleplayer'
+    sessionId.value = null
+    session.value = null
+
     if (eventSource) {
       status.value = 'CLOSING'
       eventSource.close()
@@ -122,7 +133,8 @@ export function useGameSSE() {
 
   return {
     status,
-    data,
+    sessionId,
+    session,
     close,
     createRoom,
     joinRoom,
