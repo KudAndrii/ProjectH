@@ -114,7 +114,7 @@ onUnmounted(close)
             </NuxtInput>
             <NuxtTooltip text="Leave current multiplayer session">
               <NuxtButton
-                  @click.stop="close"
+                  @click.stop="() => {endSession(); close()}"
                   color="warning"
                   variant="subtle"
                   icon="material-symbols:googler-travel"

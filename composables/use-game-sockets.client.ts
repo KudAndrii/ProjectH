@@ -11,11 +11,11 @@ type UseClientGameSocketsReturnType = {
   sessionId: Ref<string | null>
   session: Ref<GameSession | null>
   close: () => void
-  createRoom: (fieldRules: FieldRules, gameFeatures: GameFeatures) => Promise<void>
-  joinRoom: (room: string) => Promise<void>
-  makeMove: (x: number, y: number) => Promise<void>
-  restart: () => Promise<void>
-  endSession: () => Promise<void>
+  createRoom: (fieldRules: FieldRules, gameFeatures: GameFeatures) => void
+  joinRoom: (room: string) => void
+  makeMove: (x: number, y: number) => void
+  restart: () => void
+  endSession: () => void
 }
 
 // singleton
@@ -27,7 +27,7 @@ export function useClientGameSockets(): UseClientGameSocketsReturnType {
   const { protocol, host } = location
   const webSocketsProtocol = protocol === 'https:' ? 'wss:' : 'ws:'
   const { settingsOpened, gameSettings } = useGameSettings()
-  const { gameState } = useGameState()
+  const { gameState, resetGameState } = useGameState()
   const sessionId = useState<string | null>('game-session-id', () => null)
   const session = useState<GameSession | null>('game-session', () => null)
   const { status, data, send, open, close: closeSockets } =
@@ -87,6 +87,7 @@ export function useClientGameSockets(): UseClientGameSocketsReturnType {
     sessionId.value = null
     session.value = null
 
+    resetGameState(false)
     closeSockets()
   }
 
@@ -130,9 +131,6 @@ export function useClientGameSockets(): UseClientGameSocketsReturnType {
         break
 
       case 'session-ended':
-        close()
-        break;
-
       default:
         close()
         break;

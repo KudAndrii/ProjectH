@@ -16,11 +16,12 @@ export const useServerGameSockets = () => {
   const { $sessions } = useNitroApp()
 
   const createRoom: IGameAction = (peer, data) => {
-    const sessionsCount: number = Object.keys($sessions).length
+    const sessionIds = Object.keys($sessions)
+    const sessionsCount: number = sessionIds.length
     const config = useRuntimeConfig()
 
     if (sessionsCount >= config.sessionsLimit) {
-      console.error('error-details: ', { sessionsCount, sessionsLimit: config.sessionsLimit })
+      console.error('error-details: ', { sessionsCount, sessionsLimit: config.sessionsLimit, sessionIds })
       throw new Error('Server is full, try again later')
     }
 
