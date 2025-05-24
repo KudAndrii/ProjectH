@@ -75,12 +75,10 @@ export function useClientGameSockets(): UseClientGameSocketsReturnType {
   }
 
   async function endSession() {
-    console.warn('end session client')
     if (!sessionId.value || status.value !== 'OPEN') {
       return
     }
 
-    console.warn('sending end session client', sessionId.value)
     send(JSON.stringify({ action: 'end-session', data: { sessionId: sessionId.value } }))
   }
 

@@ -78,12 +78,10 @@ export const useServerGameSockets = () => {
   }
 
   const endSession: IGameAction = (peer, data) => {
-    console.warn('end-session', data)
     if (data.sessionId in $sessions) {
       delete $sessions[data.sessionId]
     }
 
-    console.warn('ending session', $sessions)
     return { action: 'session-ended', session: undefined! }
   }
 

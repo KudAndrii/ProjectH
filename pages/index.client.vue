@@ -12,7 +12,7 @@ import TheGameSettings from '~/components/TheGameSettings.vue'
 const overlay = useOverlay()
 const winnerModal = overlay.create(TheWinnerModal)
 
-const { sessionId, session, close, makeMove, restart, endSession } = useClientGameSockets()
+const { status, sessionId, session, close, makeMove, restart, endSession } = useClientGameSockets()
 const { settingsOpened, gameSettings } = useGameSettings()
 const { gameState, resetGameState } = useGameState()
 const myTurn = computed(() => gameState.value.currentMove === gameState.value.currentPlayer)
@@ -96,8 +96,32 @@ onUnmounted(close)
   <NuxtContainer as="main">
     <NuxtCard variant="outline">
       <template #header>
-        <div class="flex justify-between w-full">
-          <div class="self-center mx-auto flex items-center">
+        <div class="grid grid-cols-3 gap-4 w-full">
+          <NuxtButtonGroup
+              v-if="MULTIPLAYER_MODES.includes(gameSettings.mode) && status === 'OPEN'"
+              class="justify-self-start"
+          >
+            <NuxtInput
+                :value="sessionId"
+                readonly
+                color="neutral"
+                variant="outline"
+                :ui="{ base: 'pl-[160px] w-[240px]', leading: 'pointer-events-none' }"
+            >
+              <template #leading>
+                <span style="color: var(--ui-primary)">Multiplayer session:</span>
+              </template>
+            </NuxtInput>
+            <NuxtTooltip text="Leave current multiplayer session">
+              <NuxtButton
+                  @click.stop="close"
+                  color="warning"
+                  variant="subtle"
+                  icon="material-symbols:googler-travel"
+              />
+            </NuxtTooltip>
+          </NuxtButtonGroup>
+          <div class="col-start-2 mx-auto flex items-center">
             <span>Current player:</span>
             <ThePlayerIcon :player="gameState.currentPlayer"/>
           </div>
@@ -105,6 +129,7 @@ onUnmounted(close)
               v-model:open="settingsOpened"
               title="Game Settings"
               description="Configure game for yourself."
+              class="col-start-3 justify-self-end"
           >
             <NuxtButton
                 icon="material-symbols:settings-outline-rounded"
