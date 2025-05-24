@@ -38,7 +38,8 @@ export default defineWebSocketHandler({
     } catch (error) {
       console.error(error)
 
-      peer.send((error as Error).message)
+      // timestamp needed to handle updates on the client side properly
+      peer.send({ timestamp: Date.now(), error: (error as Error).message })
 
       return
     }

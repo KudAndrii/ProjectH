@@ -91,16 +91,12 @@ export function useClientGameSockets(): UseClientGameSocketsReturnType {
   }
 
   watch(data, (newValue) => {
-    if (!newValue) {
-      return
-    }
-
     let parsed: ActionResult
 
     try {
       parsed = JSON.parse(newValue)
     } catch {
-      console.error('Unknown action', newValue)
+      console.error('Unable to parse data: ', newValue)
       parsed = { action: undefined!, session: undefined! }
     }
 
