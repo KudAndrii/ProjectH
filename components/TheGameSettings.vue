@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { RadioGroupItem } from '#ui/components/RadioGroup.vue'
 import { useGameSettings } from '~/composables/use-game-settings'
-import { useGameSSE } from '~/composables/use-game-sse'
+import { useClientGameSockets } from '~/composables/use-game-sockets.client'
 
 const toast = useToast()
 const { copy: copyToClipboard, isSupported: clipboardSupported } = useClipboard()
 const { gameSettings } = useGameSettings()
-const { sessionId, createRoom, joinRoom } = useGameSSE()
+const { sessionId, createRoom, joinRoom } = useClientGameSockets()
 
 const items = ref<RadioGroupItem[]>([
   {
@@ -16,12 +16,12 @@ const items = ref<RadioGroupItem[]>([
   },
   {
     label: 'Host multiplayer',
-    value: 'host-multiplayer',
+    value: 'multiplayer-host',
     description: 'Play multiplayer with a friend by creating a session.'
   },
   {
     label: 'Participate multiplayer',
-    value: 'participant-multiplayer',
+    value: 'multiplayer',
     description: 'Play multiplayer with a friend by joining a session by code.'
   }
 ])
@@ -36,7 +36,7 @@ const items = ref<RadioGroupItem[]>([
     </template>
     <NuxtRadioGroup v-model="gameSettings.mode" color="primary" variant="table" default-value="singleplayer" :items="items" />
     <template #footer>
-      <NuxtButtonGroup v-if="gameSettings.mode === 'host-multiplayer'">
+      <NuxtButtonGroup v-if="gameSettings.mode === 'multiplayer-host'">
         <NuxtButton label="Host" @click.stop="createRoom(gameSettings.fieldRules, gameSettings.gameFeatures)" />
         <NuxtInput v-model="sessionId" readonly color="neutral" variant="outline" placeholder="Session ID" />
         <NuxtTooltip v-if="clipboardSupported" text="Copy to clipboard">
@@ -48,7 +48,7 @@ const items = ref<RadioGroupItem[]>([
           />
         </NuxtTooltip>
       </NuxtButtonGroup>
-      <NuxtButtonGroup v-else-if="gameSettings.mode === 'participant-multiplayer'">
+      <NuxtButtonGroup v-else-if="gameSettings.mode === 'multiplayer'">
         <NuxtInput v-model="sessionId" color="neutral" variant="outline" placeholder="Enter a session ID" />
         <NuxtButton label="Join" @click.stop="!!sessionId && joinRoom(sessionId)" />
       </NuxtButtonGroup>

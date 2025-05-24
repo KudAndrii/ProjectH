@@ -2,7 +2,7 @@
 import type { Point } from '#shared/types/point'
 import { MULTIPLAYER_MODES } from '#shared/utils/constants'
 import { makeMove as makeGameMove } from '#shared/utils/make-move'
-import { useGameSSE } from '~/composables/use-game-sse'
+import { useClientGameSockets } from '~/composables/use-game-sockets.client'
 import { useGameSettings } from '~/composables/use-game-settings'
 import { useGameState } from '~/composables/use-game-state'
 import ThePlayerIcon from '~/components/ThePlayerIcon.vue'
@@ -12,7 +12,7 @@ import TheGameSettings from '~/components/TheGameSettings.vue'
 const overlay = useOverlay()
 const winnerModal = overlay.create(TheWinnerModal)
 
-const { sessionId, session, makeMove, restart, endSession } = useGameSSE()
+const { sessionId, session, close, makeMove, restart, endSession } = useClientGameSockets()
 const { settingsOpened, gameSettings } = useGameSettings()
 const { gameState, resetGameState } = useGameState()
 const myTurn = computed(() => gameState.value.currentMove === gameState.value.currentPlayer)
@@ -60,7 +60,7 @@ const addPoint = async (x: number, y: number) => {
       gameState.value.currentMove = moveResults.nextTurn
 
       if (gameOver.value) {
-        showTheWinner()
+        await showTheWinner()
         return
       }
 
@@ -88,6 +88,8 @@ async function showTheWinner() {
 
   resetGameState(isMultiplayer)
 }
+
+onUnmounted(close)
 </script>
 
 <template>

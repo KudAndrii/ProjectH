@@ -1,0 +1,64 @@
+import { ActionResult, useServerGameSockets } from "~/composables/use-game-sockets.server"
+
+export default defineWebSocketHandler({
+  open(peer) {
+    console.log("[ws] open", peer);
+  },
+
+  message(peer, message) {
+    const { action, data } = JSON.parse(message.text())
+    const { createRoom, joinRoom, makeMove, restart, endSession } = useServerGameSockets()
+    let actionResult: ActionResult
+
+    try {
+      switch (action) {
+        case 'create-room':
+          actionResult = createRoom(peer, data)
+          break
+
+        case 'join-room':
+          actionResult = joinRoom(peer, data)
+          break
+
+        case 'make-move':
+          actionResult = makeMove(peer, data)
+          break
+
+        case 'restart':
+          actionResult = restart(peer, data)
+          break
+
+        case 'end-session':
+          actionResult = endSession(peer, data)
+          break;
+
+        default:
+          throw new Error('Unknown action')
+      }
+    } catch (error) {
+      console.error(error)
+
+      peer.send((error as Error).message)
+
+      return
+    }
+
+    console.log('Action result: ', actionResult)
+
+    // Publish to all other peers in the room except the publisher
+    if (!!data.sessionId && action === 'make-move' || action === 'end-session') {
+      peer.publish(data.sessionId, JSON.stringify(actionResult))
+    }
+
+    peer.send(JSON.stringify(actionResult))
+  },
+
+  close(peer, event) {
+    console.log("[ws] close", peer, event);
+  },
+
+  error(peer, error) {
+    console.error("[ws] error", peer, error);
+  },
+});
+

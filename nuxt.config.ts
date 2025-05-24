@@ -1,6 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
+  nitro: { experimental: { websocket: true } },
   devtools: { enabled: true },
   devServer: {
     host: '0.0.0.0', // Listen on all network interfaces
