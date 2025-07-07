@@ -17,7 +17,7 @@ const { settingsOpened, gameSettings } = useGameSettings()
 const { gameState, resetGameState } = useGameState()
 const myTurn = computed(() => gameState.value.currentMove === gameState.value.currentPlayer)
 const gameOver = computed(() => !!gameState.value.winner ||
-    gameState.value.points.length === gameSettings.value.fieldRules.columns * gameSettings.value.fieldRules.rows)
+  gameState.value.points.length === gameSettings.value.fieldRules.columns * gameSettings.value.fieldRules.rows)
 
 watch(session, (newValue) => {
   if (!newValue) {
@@ -40,8 +40,8 @@ const addPoint = async (x: number, y: number) => {
   if (MULTIPLAYER_MODES.includes(gameSettings.value.mode)) {
     if (sessionId.value) {
       try {
-        // Make the move via HTTP, but wait for the SSE update to actually update the UI
-        await makeMove(x, y)
+        // Make the move via HTTP but wait for the SSE update to actually update the UI
+        makeMove(x, y)
         // Note: We don't update the state here directly anymore
         // as the SSE data watcher will handle the update
       } catch (error) {
@@ -53,7 +53,7 @@ const addPoint = async (x: number, y: number) => {
 
     try {
       const moveResults = makeGameMove(newPoint, gameState.value.points, gameSettings.value.gameFeatures,
-          gameSettings.value.fieldRules.pointsInRowToWin)
+        gameSettings.value.fieldRules.pointsInRowToWin)
 
       gameState.value.points = [ ...moveResults.updatedPoints ]
       gameState.value.winner = moveResults.winner
@@ -81,7 +81,7 @@ async function showTheWinner() {
 
   if (isMultiplayer) {
     const action = playAgain ? restart : endSession
-    await action()
+    action()
     isMultiplayer = playAgain
 
   }
@@ -97,59 +97,70 @@ onUnmounted(close)
     <NuxtCard variant="outline">
       <template #header>
         <div class="grid grid-cols-3 gap-4 w-full">
-          <NuxtButtonGroup
-              v-if="MULTIPLAYER_MODES.includes(gameSettings.mode) && status === 'OPEN'"
-              class="justify-self-start"
+          <div
+            v-if="MULTIPLAYER_MODES.includes(gameSettings.mode) && status === 'OPEN'"
+            class="flex gap-2 items-center"
           >
-            <NuxtInput
+            <NuxtButtonGroup
+              class="justify-self-start"
+            >
+              <NuxtInput
                 :value="sessionId"
                 readonly
                 color="neutral"
                 variant="outline"
                 :ui="{ base: 'pl-[160px] w-[240px]', leading: 'pointer-events-none' }"
-            >
-              <template #leading>
-                <span style="color: var(--ui-primary)">Multiplayer session:</span>
-              </template>
-            </NuxtInput>
-            <NuxtTooltip text="Leave current multiplayer session">
-              <NuxtButton
+              >
+                <template #leading>
+                  <span style="color: var(--ui-primary)">Multiplayer session:</span>
+                </template>
+              </NuxtInput>
+              <NuxtTooltip text="Leave current multiplayer session">
+                <NuxtButton
                   @click.stop="() => {endSession(); close()}"
                   color="warning"
                   variant="subtle"
                   icon="material-symbols:googler-travel"
-              />
-            </NuxtTooltip>
-          </NuxtButtonGroup>
+                  class="cursor-pointer"
+                />
+              </NuxtTooltip>
+            </NuxtButtonGroup>
+            <NuxtBadge
+              size="sm"
+              variant="subtle"
+              :color="session?.sessionStarted ? 'success' : 'neutral'"
+            >{{ session?.sessionStarted ? 'started' : 'waiting' }}
+            </NuxtBadge>
+          </div>
           <div class="col-start-2 mx-auto flex items-center">
             <span>Current player:</span>
             <ThePlayerIcon :player="gameState.currentPlayer"/>
           </div>
           <NuxtSlideover
-              v-model:open="settingsOpened"
-              title="Game Settings"
-              description="Configure game for yourself."
-              class="col-start-3 justify-self-end"
+            v-model:open="settingsOpened"
+            title="Game Settings"
+            description="Configure game for yourself."
+            class="col-start-3 justify-self-end"
           >
             <NuxtButton
-                icon="material-symbols:settings-outline-rounded"
-                size="md"
-                color="primary"
-                variant="solid"
-                class="self-end"
+              icon="material-symbols:settings-outline-rounded"
+              size="md"
+              color="primary"
+              variant="solid"
+              class="self-end"
             />
 
             <template #body>
-              <TheGameSettings />
+              <TheGameSettings/>
             </template>
           </NuxtSlideover>
         </div>
       </template>
       <TheGamingField
-          :points="gameState.points"
-          :dimensions="{ X: gameSettings.fieldRules.columns, Y: gameSettings.fieldRules.rows }"
-          @add-point="addPoint"
-          :class="{ 'pointer-events-none': !myTurn }"
+        :points="gameState.points"
+        :dimensions="{ X: gameSettings.fieldRules.columns, Y: gameSettings.fieldRules.rows }"
+        @add-point="addPoint"
+        :class="{ 'pointer-events-none': session?.sessionStarted && !myTurn }"
       />
     </NuxtCard>
   </NuxtContainer>

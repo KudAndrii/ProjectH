@@ -39,6 +39,7 @@ export default defineWebSocketHandler({
       console.error(error)
 
       // timestamp needed to handle updates on the client side properly
+      // since the rest payload might not change so it wont be detected
       peer.send({ timestamp: Date.now(), error: (error as Error).message })
 
       return
@@ -46,8 +47,8 @@ export default defineWebSocketHandler({
 
     console.log('Action result: ', actionResult)
 
-    // Publish to all other peers in the room except the publisher
-    if (!!data.sessionId && action === 'make-move' || action === 'end-session') {
+    // Publish update to all other peers in the room except the publisher
+    if (!!data.sessionId && [ 'make-move', 'end-session', 'join-room' ].includes(action)) {
       peer.publish(data.sessionId, JSON.stringify(actionResult))
     }
 
@@ -55,11 +56,23 @@ export default defineWebSocketHandler({
   },
 
   close(peer, event) {
-    console.log("[ws] close", peer, event);
+    const { clearSessionsForPeer } = useServerGameSockets()
+
+    try {
+      clearSessionsForPeer(peer)
+    } finally {
+      console.log("[ws] close", peer, event);
+    }
   },
 
   error(peer, error) {
-    console.error("[ws] error", peer, error);
+    const { clearSessionsForPeer } = useServerGameSockets()
+
+    try {
+      clearSessionsForPeer(peer)
+    } finally {
+      console.error("[ws] error", peer, error);
+    }
   },
 });
 
