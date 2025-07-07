@@ -6,17 +6,17 @@ defineProps<{
   winner: Player | undefined
 }>()
 
-const emit = defineEmits<{ close: [boolean] }>()
+const emit = defineEmits<{ close: [ boolean ] }>()
 const { gameSettings } = useGameSettings()
 </script>
 
 <template>
   <NuxtModal
-      title="Game over"
-      description="Click 'Again' if you want to keep the session, or leave to start a new one."
-      close-icon="material-symbols:cancel-outline-rounded"
-      :dismissible="MULTIPLAYER_MODES.includes(gameSettings.mode)"
-      :close="{ color: 'error', onClick: () => emit('close', false) }"
+    title="Game over"
+    description="Click 'Again' if you want to keep the session, or leave to start a new one."
+    close-icon="material-symbols:cancel-outline-rounded"
+    :dismissible="!MULTIPLAYER_MODES.includes(gameSettings.mode)"
+    :close="{ color: 'error', onClick: () => emit('close', false) }"
   >
     <template #body>
       <h2>
@@ -30,8 +30,14 @@ const { gameSettings } = useGameSettings()
       </h2>
     </template>
     <template #footer>
-      <NuxtButton label="Again" @click="emit('close', true)" />
-      <NuxtButton label="Leave" color="error" variant="subtle" @click="emit('close', false)" />
+      <NuxtButton label="Again" @click="emit('close', true)"/>
+      <NuxtButton
+        v-if="MULTIPLAYER_MODES.includes(gameSettings.mode)"
+        label="Leave"
+        color="error"
+        variant="subtle"
+        @click="emit('close', false)"
+      />
     </template>
   </NuxtModal>
 </template>

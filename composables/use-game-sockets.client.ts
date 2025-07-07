@@ -1,8 +1,9 @@
+import type { WebSocketStatus } from '@vueuse/core'
 import type { FieldRules } from '#shared/types/field-rules'
 import type { GameFeatures } from '#shared/types/game-features'
 import type { GameSession } from '#shared/types/game-session'
+import type { Player } from '#shared/types/player'
 import type { ActionResult } from '~/composables/use-game-sockets.server'
-import type { WebSocketStatus } from '@vueuse/core'
 import { useGameState } from '~/composables/use-game-state'
 import { useGameSettings } from '~/composables/use-game-settings'
 
@@ -31,8 +32,8 @@ export function useClientGameSockets(): UseClientGameSocketsReturnType {
   const sessionId = useState<string | null>('game-session-id', () => null)
   const session = useState<GameSession | null>('game-session', () => null)
   const { status, data, send, open, close: closeSockets } =
-    useWebSocket(`${webSocketsProtocol}//${host}/api/ws/games`, { immediate: false })
-  
+    useWebSocket(`${ webSocketsProtocol }//${ host }/api/ws/games`, { immediate: false })
+
   // Create or join a room
   async function createRoom(fieldRules: FieldRules, gameFeatures: GameFeatures) {
     if (status.value !== 'OPEN') {
@@ -111,15 +112,27 @@ export function useClientGameSockets(): UseClientGameSocketsReturnType {
         break;
 
       case 'room-joined':
+        let currentPlayer: Player;
+
+        switch (gameSettings.value.mode) {
+          case 'multiplayer':
+            currentPlayer = 'circle'
+            break;
+          case 'multiplayer-host':
+            currentPlayer = 'cross'
+            break;
+          default:
+            throw new Error(`Unexpected mode for 'room-joined' action: ${ gameSettings.value.mode }`)
+        }
+
         gameState.value = {
           ...gameState.value,
-          currentPlayer: 'circle'
+          currentPlayer: currentPlayer
         }
         sessionId.value = id
         session.value = { ...updatedSession }
-        if (gameSettings.value.mode === 'multiplayer' && settingsOpened.value) {
-          settingsOpened.value = false
-        }
+
+        settingsOpened.value = false
         break;
 
       case 'move-made':
