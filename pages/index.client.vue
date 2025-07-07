@@ -81,7 +81,7 @@ async function showTheWinner() {
 
   if (isMultiplayer) {
     const action = playAgain ? restart : endSession
-    await action()
+    action()
     isMultiplayer = playAgain
 
   }

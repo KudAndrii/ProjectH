@@ -6,6 +6,7 @@ import type { Player } from '#shared/types/player'
 import type { ActionResult } from '~/composables/use-game-sockets.server'
 import { useGameState } from '~/composables/use-game-state'
 import { useGameSettings } from '~/composables/use-game-settings'
+import TheErrorModal from '~/components/TheErrorModal.vue'
 
 type UseClientGameSocketsReturnType = {
   status: Ref<WebSocketStatus>
@@ -35,7 +36,7 @@ export function useClientGameSockets(): UseClientGameSocketsReturnType {
     useWebSocket(`${ webSocketsProtocol }//${ host }/api/ws/games`, { immediate: false })
 
   // Create or join a room
-  async function createRoom(fieldRules: FieldRules, gameFeatures: GameFeatures) {
+  function createRoom(fieldRules: FieldRules, gameFeatures: GameFeatures) {
     if (status.value !== 'OPEN') {
       open()
     }
@@ -43,7 +44,7 @@ export function useClientGameSockets(): UseClientGameSocketsReturnType {
     send(JSON.stringify({ action: 'create-room', data: { fieldRules, gameFeatures } }))
   }
 
-  async function joinRoom(room: string) {
+  function joinRoom(room: string) {
     if (!room) {
       throw new Error('Room is not defined')
     }
@@ -55,7 +56,7 @@ export function useClientGameSockets(): UseClientGameSocketsReturnType {
     send(JSON.stringify({ action: 'join-room', data: { sessionId: room } }))
   }
 
-  async function makeMove(x: number, y: number) {
+  function makeMove(x: number, y: number) {
     if (status.value !== 'OPEN') {
       throw new Error('WebSocket is not open')
     }
@@ -63,7 +64,7 @@ export function useClientGameSockets(): UseClientGameSocketsReturnType {
     send(JSON.stringify({ action: 'make-move', data: { sessionId: sessionId.value, move: { x, y } } }))
   }
 
-  async function restart() {
+  function restart() {
     if (!sessionId.value) {
       throw new Error('Session is not defined')
     }
@@ -75,7 +76,7 @@ export function useClientGameSockets(): UseClientGameSocketsReturnType {
     send(JSON.stringify({ action: 'restart', data: { sessionId: sessionId.value } }))
   }
 
-  async function endSession() {
+  function endSession() {
     if (!sessionId.value || status.value !== 'OPEN') {
       return
     }
@@ -94,11 +95,13 @@ export function useClientGameSockets(): UseClientGameSocketsReturnType {
 
   watch(data, (newValue) => {
     let parsed: ActionResult
+    let errorMessage: string = 'Unknown error occurred during multiplayer session'
 
     try {
       parsed = JSON.parse(newValue)
     } catch {
       console.error('Unable to parse data: ', newValue)
+      errorMessage = 'Unable to process response from the server'
       parsed = { action: undefined!, session: undefined! }
     }
 
@@ -145,6 +148,15 @@ export function useClientGameSockets(): UseClientGameSocketsReturnType {
 
       case 'session-ended':
       default:
+        if ('error' in parsed && typeof parsed.error === 'string' && parsed.error.length > 0) {
+          errorMessage = parsed.error
+        }
+
+        useOverlay().create(TheErrorModal, {
+          props: {
+            message: errorMessage
+          }
+        }).open()
         close()
         break;
     }
