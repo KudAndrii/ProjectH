@@ -25,57 +25,67 @@ export const useServerGameSockets = () => {
       throw new Error('Server is full, try again later')
     }
 
+    if (Object.values($sessions).filter(x => x.hostId === peer.id).length >= 2) {
+      throw new Error('2 or more sessions for the same peer created')
+    }
+
     const sessionId = generateCode()
     peer.subscribe(sessionId)
 
     $sessions[sessionId] = {
-      sessionStarted: false,
-      fieldRules: data.fieldRules,
-      gameFeatures: data.gameFeatures,
-      currentMove: 'cross',
-      points: [],
-      winner: undefined
+      hostId: peer.id,
+      guestId: undefined,
+      state: {
+        sessionStarted: false,
+        fieldRules: data.fieldRules,
+        gameFeatures: data.gameFeatures,
+        currentMove: 'cross',
+        points: [],
+        winner: undefined
+      }
     }
 
-    return { action: 'room-created', session: { ...$sessions[sessionId], sessionId } }
+    return { action: 'room-created', session: { ...$sessions[sessionId].state, sessionId } }
   }
 
   const joinRoom: IGameAction = (peer, data) => {
     const session = $sessions[data.sessionId] ?? throwUndefinedRoom(data.sessionId)
     peer.subscribe(data.sessionId)
 
-    if (session.sessionStarted) {
+    if (session.state.sessionStarted) {
       console.error('error-details: ', session)
       throw new Error('Room is full')
     }
 
-    session.sessionStarted = true
+    session.guestId = peer.id
+    session.state.sessionStarted = true
 
-    return { action: 'room-joined', session: { ...session, sessionId: data.sessionId } }
+    return { action: 'room-joined', session: { ...session.state, sessionId: data.sessionId } }
   }
 
   const makeMove: IGameAction = (peer, data) => {
     const session = $sessions[data.sessionId] ?? throwUndefinedRoom(data.sessionId)
+    const sessionState = session.state
 
-    const newPoint = { X: data.move.x, Y: data.move.y, player: session.currentMove }
+    const newPoint = { X: data.move.x, Y: data.move.y, player: sessionState.currentMove }
     const moveResults =
-      makeGameMove(newPoint, session.points, session.gameFeatures, session.fieldRules.pointsInRowToWin)
+      makeGameMove(newPoint, sessionState.points, sessionState.gameFeatures, sessionState.fieldRules.pointsInRowToWin)
 
-    session.points = moveResults.updatedPoints
-    session.winner = moveResults.winner
-    session.currentMove = moveResults.nextTurn
+    session.state.points = moveResults.updatedPoints
+    session.state.winner = moveResults.winner
+    session.state.currentMove = moveResults.nextTurn
 
-    return { action: 'move-made', session: { ...session, sessionId: data.sessionId} }
+    return { action: 'move-made', session: { ...session.state, sessionId: data.sessionId} }
   }
 
   const restart: IGameAction = (peer, data) => {
     const session = $sessions[data.sessionId] ?? throwUndefinedRoom(data.sessionId)
 
-    session.currentMove = 'cross'
-    session.points = []
-    session.winner = undefined
+    session.state.currentMove = 'cross'
+    session.state.points = []
+    session.state.winner = undefined
 
-    return { action: 'restarted', session: { ...session, sessionId: data.sessionId} }
+    return { action: 'restarted', session: { ...session.state, sessionId: data.sessionId} }
   }
 
   const endSession: IGameAction = (peer, data) => {
@@ -84,6 +94,21 @@ export const useServerGameSockets = () => {
     }
 
     return { action: 'session-ended', session: undefined! }
+  }
+
+  const clearSessionsForPeer = (peer: Peer) => {
+    try {
+      const { $sessions } = useNitroApp()
+      const peerSessions = Object.entries($sessions)
+        .filter(([_, session]) => session.hostId === peer.id || session.guestId === peer.id)
+
+      //TODO: for those sessions where peer is guest - change state instead of deletion
+      for (const [sessionId, _] of peerSessions) {
+        delete $sessions[sessionId]
+      }
+    } catch (error) {
+      console.error('Error occurred during clearing sessions for peer: ', peer.id, error)
+    }
   }
 
   function throwUndefinedRoom(id: string) {
@@ -96,6 +121,7 @@ export const useServerGameSockets = () => {
     joinRoom,
     makeMove,
     restart,
-    endSession
+    endSession,
+    clearSessionsForPeer
   }
 }

@@ -47,8 +47,8 @@ export default defineWebSocketHandler({
 
     console.log('Action result: ', actionResult)
 
-    // Publish to all other peers in the room except the publisher
-    if (!!data.sessionId && ['make-move', 'end-session', 'join-room'].includes(action)) {
+    // Publish update to all other peers in the room except the publisher
+    if (!!data.sessionId && [ 'make-move', 'end-session', 'join-room' ].includes(action)) {
       peer.publish(data.sessionId, JSON.stringify(actionResult))
     }
 
@@ -56,11 +56,23 @@ export default defineWebSocketHandler({
   },
 
   close(peer, event) {
-    console.log("[ws] close", peer, event);
+    const { clearSessionsForPeer } = useServerGameSockets()
+
+    try {
+      clearSessionsForPeer(peer)
+    } finally {
+      console.log("[ws] close", peer, event);
+    }
   },
 
   error(peer, error) {
-    console.error("[ws] error", peer, error);
+    const { clearSessionsForPeer } = useServerGameSockets()
+
+    try {
+      clearSessionsForPeer(peer)
+    } finally {
+      console.error("[ws] error", peer, error);
+    }
   },
 });
 
