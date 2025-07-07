@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 
+main {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
 .nuxt-card-header {
     display: flex;
     justify-content: center;

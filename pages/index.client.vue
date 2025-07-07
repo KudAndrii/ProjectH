@@ -15,6 +15,8 @@ const winnerModal = overlay.create(TheWinnerModal)
 const { status, sessionId, session, close, makeMove, restart, endSession } = useClientGameSockets()
 const { settingsOpened, gameSettings } = useGameSettings()
 const { gameState, resetGameState } = useGameState()
+const displayMultiplayerStatus = computed(() =>
+  MULTIPLAYER_MODES.includes(gameSettings.value.mode) && status.value === 'OPEN')
 const myTurn = computed(() => gameState.value.currentMove === gameState.value.currentPlayer)
 const gameOver = computed(() => !!gameState.value.winner ||
   gameState.value.points.length === gameSettings.value.fieldRules.columns * gameSettings.value.fieldRules.rows)
@@ -96,9 +98,9 @@ onUnmounted(close)
   <NuxtContainer as="main">
     <NuxtCard variant="outline">
       <template #header>
-        <div class="grid grid-cols-3 gap-4 w-full">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
           <div
-            v-if="MULTIPLAYER_MODES.includes(gameSettings.mode) && status === 'OPEN'"
+            v-if="displayMultiplayerStatus"
             class="flex gap-2 items-center"
           >
             <NuxtButtonGroup
@@ -109,10 +111,10 @@ onUnmounted(close)
                 readonly
                 color="neutral"
                 variant="outline"
-                :ui="{ base: 'pl-[160px] w-[240px]', leading: 'pointer-events-none' }"
+                :ui="{ base: 'pl-[105px] w-[180px]', leading: 'pointer-events-none' }"
               >
                 <template #leading>
-                  <span style="color: var(--ui-primary)">Multiplayer session:</span>
+                  <span style="color: var(--ui-primary)">Multiplayer:</span>
                 </template>
               </NuxtInput>
               <NuxtTooltip text="Leave current multiplayer session">
@@ -132,8 +134,8 @@ onUnmounted(close)
             >{{ session?.sessionStarted ? 'started' : 'waiting' }}
             </NuxtBadge>
           </div>
-          <div class="col-start-2 mx-auto flex items-center">
-            <span>Current player:</span>
+          <div class="flex items-center justify-start md:col-start-2 md:mx-auto">
+          <span :class="{ 'hidden md:inline': displayMultiplayerStatus }">Current player:</span>
             <ThePlayerIcon :player="gameState.currentPlayer"/>
           </div>
           <NuxtSlideover
@@ -160,7 +162,7 @@ onUnmounted(close)
         :points="gameState.points"
         :dimensions="{ X: gameSettings.fieldRules.columns, Y: gameSettings.fieldRules.rows }"
         @add-point="addPoint"
-        :class="{ 'pointer-events-none': session?.sessionStarted && !myTurn }"
+        :class="{ 'pointer-events-none': !session?.sessionStarted || !myTurn }"
       />
     </NuxtCard>
   </NuxtContainer>
