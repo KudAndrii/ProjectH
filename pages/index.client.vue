@@ -17,7 +17,10 @@ const { settingsOpened, gameSettings } = useGameSettings()
 const { gameState, resetGameState } = useGameState()
 const displayMultiplayerStatus = computed(() =>
   MULTIPLAYER_MODES.includes(gameSettings.value.mode) && status.value === 'OPEN')
-const myTurn = computed(() => gameState.value.currentMove === gameState.value.currentPlayer)
+const myTurn = computed(() =>
+  gameState.value.currentMove === gameState.value.currentPlayer &&
+  (!session.value || !!session.value?.sessionStarted)
+)
 const gameOver = computed(() => !!gameState.value.winner ||
   gameState.value.points.length === gameSettings.value.fieldRules.columns * gameSettings.value.fieldRules.rows)
 
@@ -162,7 +165,7 @@ onUnmounted(close)
         :points="gameState.points"
         :dimensions="{ X: gameSettings.fieldRules.columns, Y: gameSettings.fieldRules.rows }"
         @add-point="addPoint"
-        :class="{ 'pointer-events-none': !session?.sessionStarted || !myTurn }"
+        :class="{ 'pointer-events-none': !myTurn }"
       />
     </NuxtCard>
   </NuxtContainer>
