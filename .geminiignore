@@ -1,0 +1,10 @@
+# Ignore all .env files
+.env
+.env.*
+!.env.example
+
+# Ignore key files
+*.key
+
+# Ignore pem files
+*.pem
