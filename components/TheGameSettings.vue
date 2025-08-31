@@ -78,9 +78,9 @@ const items = ref<RadioGroupItem[]>([
       </h3>
     </template>
     <div class="flex flex-col gap-3">
-      <NuxtInputNumber label="Rows" v-model="gameSettings.fieldRules.rows" :min="3" :max="10" disabled />
-      <NuxtInputNumber label="Columns" v-model="gameSettings.fieldRules.columns" :min="3" :max="10" disabled />
-      <NuxtInputNumber label="Points to win" v-model="gameSettings.fieldRules.pointsInRowToWin" :min="3" :max="10" disabled />
+      <NuxtInputNumber label="Rows" v-model="gameSettings.fieldRules.rows" :min="3" :max="10" />
+      <NuxtInputNumber label="Columns" v-model="gameSettings.fieldRules.columns" :min="3" :max="10" />
+      <NuxtInputNumber label="Points to win" v-model="gameSettings.fieldRules.pointsInRowToWin" :min="3" :max="10" />
     </div>
   </NuxtCard>
 </template>

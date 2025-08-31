@@ -1,41 +1,76 @@
 <script setup lang="ts">
-import type { Point } from '#shared/types/point'
+import type { Point } from "#shared/types/point";
 
 const props = defineProps<{
-  dimensions: { X: number, Y: number }
-  points: Point[]
-}>()
+  dimensions: { X: number; Y: number };
+  points: Point[];
+}>();
 
 const emit = defineEmits<{
-  'add-point': [ X: number, Y: number ]
-}>()
+  "add-point": [X: number, Y: number];
+}>();
 
 function findPoint(x: number, y: number): Point | undefined {
-  return props.points.find(point => point.X === x && point.Y === y)
+  return props.points.find((point) => point.X === x && point.Y === y);
+}
+
+function isEdgeCell(row: number, column: number): boolean {
+  return (
+    row === 1 ||
+    row === props.dimensions.Y ||
+    column === 1 ||
+    column === props.dimensions.X
+  );
 }
 </script>
 
 <template>
-  <div class="gaming-field">
+  <div
+    class="gaming-field"
+    :style="{
+      'grid-template-columns': `repeat(${dimensions.X}, var(--cell-size))`,
+      'grid-template-rows': `repeat(${dimensions.Y}, var(--cell-size))`,
+    }"
+  >
     <template v-for="row in dimensions.Y" :key="`field-row-${row}`">
       <template v-for="column in dimensions.X" :key="`field-column-${column}`">
-        <div @click.stop="emit('add-point', column, row)" class="cell">
+        <div
+          @click.stop="emit('add-point', column, row)"
+          class="cell"
+          :class="{ 'edge-cell': isEdgeCell(row, column) }"
+        >
           <Transition name="bounce">
             <ThePlayerIcon
-                v-if="findPoint(column, row)"
-                :player="findPoint(column, row)!.player"
-                width="100%"
-                height="100%"
-                class="symbol"
+              v-if="findPoint(column, row)"
+              :player="findPoint(column, row)!.player"
+              width="100%"
+              height="100%"
+              class="symbol"
             />
           </Transition>
         </div>
       </template>
     </template>
-    <NuxtSeparator class="separator h1" orientation="horizontal" type="solid" color="primary" size="xl"/>
-    <NuxtSeparator class="separator h2" orientation="horizontal" type="solid" color="primary" size="xl"/>
-    <NuxtSeparator class="separator v1" orientation="vertical" type="solid" color="primary" size="xl"/>
-    <NuxtSeparator class="separator v2" orientation="vertical" type="solid" color="primary" size="xl"/>
+    <template v-for="row in dimensions.Y - 1" :key="`separator-h-${row}`">
+      <NuxtSeparator
+        class="separator"
+        :style="{ top: `calc(var(--cell-size) * ${row})` }"
+        orientation="horizontal"
+        type="solid"
+        color="primary"
+        size="xl"
+      />
+    </template>
+    <template v-for="column in dimensions.X - 1" :key="`separator-v-${column}`">
+      <NuxtSeparator
+        class="separator"
+        :style="{ left: `calc(var(--cell-size) * ${column})` }"
+        orientation="vertical"
+        type="solid"
+        color="primary"
+        size="xl"
+      />
+    </template>
   </div>
 </template>
 
@@ -60,8 +95,7 @@ function findPoint(x: number, y: number): Point | undefined {
 
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, var(--cell-size));
-  grid-template-rows: repeat(3, var(--cell-size));
+
   width: max-content;
   height: max-content;
   margin: auto;
@@ -72,12 +106,15 @@ function findPoint(x: number, y: number): Point | undefined {
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border-radius: 1rem;
     aspect-ratio: 1;
     transition-property: background-color;
     transition-duration: var(--default-transition-duration);
     transition-timing-function: var(--default-transition-timing-function);
     padding: 1rem;
+
+    &.edge-cell {
+      border-radius: 1rem;
+    }
 
     &:not(:has(.symbol)):hover {
       background-color: var(--ui-bg-accented);
@@ -99,22 +136,6 @@ function findPoint(x: number, y: number): Point | undefined {
 
     &[data-orientation="vertical"] {
       transform: translateX(-50%);
-    }
-
-    &.h1 {
-      top: var(--cell-size);
-    }
-
-    &.h2 {
-      top: calc(var(--cell-size) * 2);
-    }
-
-    &.v1 {
-      left: var(--cell-size);
-    }
-
-    &.v2 {
-      left: calc(var(--cell-size) * 2);
     }
   }
 }
